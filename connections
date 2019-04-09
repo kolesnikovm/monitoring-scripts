@@ -1,0 +1,51 @@
+#!/bin/bash
+ 
+hostname=`hostname`
+ 
+listen_ports=$(ss -antl \
+| tail -n +2 \
+| awk '
+  function rindex(str,c)
+  {
+    return match(str,"\\" c "[^" c "]*$")? RSTART : 0
+  }
+  {
+    listen_port = substr($4, rindex($4, ":")+1);
+    listen_ports[lines++] = listen_port;
+    print listen_ports[lines-1]
+  }' \
+| sort -u)
+#echo "LISTEN PORTS: "${listen_ports[*]}
+ 
+total_connections=$(ss -nt | tail -n +2 \
+| awk '
+  function rindex(str,c)
+  {
+    return match(str,"\\" c "[^" c "]*$")? RSTART : 0
+  }
+  {
+    local_ip = substr($4, rindex($4, ":")+1);
+    remote_host = substr($5, 1, rindex($5, ":")-1);
+    remote_port = substr($5, rindex($5, ":")+1);
+    state = $1;
+    printf "%s %s %s %s\n", local_ip, remote_host, remote_port, state;
+  }'
+)
+#echo  "TOTAL CONNECTIONS: "${total_connections[*]}
+ 
+ 
+for port in ${listen_ports[*]}; do
+  printf '%s\n' "${total_connections[@]}" | awk -v host="$hostname" 'BEGIN {host=host}{printf "%s %s %s %s\n", $1, $2, $4, host}' | grep -w ^$port | sort | uniq -c \
+  | awk '{printf "inbound,host=%s,local_port=%s,remote_ip=%s,state=%s count=%s\n", $5, $2, $3, $4, $1}'
+#  | awk '{printf "inbound{host=\"%s\", local_port=\"%s\", remote_ip=\"%s\", state=\"%s\"} %s\n", $5, $2, $3, $4, $1}'
+done
+ 
+ 
+for port in ${listen_ports[*]}; do
+  total_connections=$(printf '%s\n' "${total_connections[@]}" | head -n -1 | grep -w -v ^$port)
+done
+#echo  "TOTAL CONNECTIONS: "${total_connections[*]}
+ 
+printf '%s\n' "${total_connections[@]}" | awk -v host="$hostname" 'BEGIN {host=host}{printf "%s %s %s %s\n", host, $2, $3, $4}' | head -n -1 | sort | uniq -c \
+| awk '{printf "outbound,host=%s,remote_ip=%s,remote_port=%s,state=%s count=%s\n", $2, $3, $4, $5, $1}'
+#| awk '{printf "outbound{host=\"%s\", remote_ip=\"%s\", remote_port=\"%s\", state=\"%s\"} %s\n", $2, $3, $4, $5, $1}'
