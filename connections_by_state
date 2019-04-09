@@ -1,0 +1,6 @@
+#!/bin/bash
+ 
+hostname=`hostname`
+ 
+ss -ant | tail -n +2 | awk '{print $1}' | sort | uniq -c \
+| awk -v host="$hostname" 'BEGIN{host=host}{printf "network,host=%s,state=%s count=%s\n", host, $2, $1}'
