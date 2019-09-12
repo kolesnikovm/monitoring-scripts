@@ -17,7 +17,7 @@ listen_ports=$(ss -antl \
 | sort -u)
 #echo "LISTEN PORTS: "${listen_ports[*]}
  
-total_connections=$(ss -nt | tail -n +2 \
+total_connections=$(ss -nt state connected | tail -n +2 \
 | awk '
   function rindex(str,c)
   {
