@@ -1,0 +1,17 @@
+#!/bin/bash
+
+lsof -i 4TCP -P \
+| tail -n +2 \
+| awk '
+  {
+    state = substr($10,2,length($10)-2);
+    printf "%-8s\t%-8s\t%-8s\t%-8s\n", $1, $2, $3, state;
+  }' \
+| sort | uniq -c \
+| awk '
+  BEGIN {
+    printf "%-8s\t%-5s\t%-8s\t%-8s\t%5s\n", "COMMAND", "PID", "USER", "STATE", "COUNT"
+  }
+  {
+    printf "%-8s\t%-5s\t%-8s\t%-8s\t%5s\n", $2, $3, $4, $5, $1;
+  }'
